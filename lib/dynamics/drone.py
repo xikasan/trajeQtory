@@ -47,8 +47,9 @@ class Drone2D:
 
         self.x: np.ndarray = np.zeros(4)
         self.A_, self.B_ = self.__build()
-        self.state_max: np.ndarray = np.array([100, 100, self.Vmax, self.Vmax], dtype=dtype)
-        self.pos_max: np.ndarray = np.array([100, 100], dtype=dtype)
+        self.state_max: np.ndarray = np.array([10, 10, self.Vmax, self.Vmax], dtype=dtype)
+        self.pos_max: np.ndarray = np.array([10, 10], dtype=dtype)
+        self.act_max: np.ndarray = np.array([10, 10], dtype=dtype)
 
     def __build(self):
         D = -1 * self.Cd
@@ -68,6 +69,7 @@ class Drone2D:
 
     def __call__(self, u: Union[List, np.ndarray]) -> np.ndarray:
         u = np.asarray(u).astype(float)
+        u = np.clip(u, -self.act_max, self.act_max)
 
         def f(x):
             return x @ self.A_ + u @ self.B_
@@ -99,3 +101,7 @@ class Drone2D:
     @property
     def state(self) -> np.ndarray:
         return self.x.astype(self.dtype)
+
+    @property
+    def position(self) -> np.ndarray:
+        return self.x[self.ix.pos].astype(self.dtype)
