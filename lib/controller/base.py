@@ -21,3 +21,6 @@ class BaseController:
     @staticmethod
     def retrieve_drone_by_roll(drones, roll: DroneRoll):
         return [d for d in drones if d.roll is roll]
+
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError()

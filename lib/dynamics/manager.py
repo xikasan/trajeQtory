@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as nl
 from typing import List, Union
 
-from .drone import Drone2D, IndexDrone2D
+from .drone import Drone2D, IndexDrone2D, DroneRoll
 
 
 class DroneManager:
@@ -13,7 +13,7 @@ class DroneManager:
     ix = IndexDrone2D()
     e: float = 0.9  # coefficient of restitution
 
-    def __init__(self, dt: float = 0.01, world_max: List[float] = [100, 100]):
+    def __init__(self, dt: float = 0.01, world_max: List[float] = [10, 10]):
         self.dt = dt
         self.drones: List[Drone2D] = []
         self.world_max: List[float] = world_max
@@ -24,7 +24,7 @@ class DroneManager:
             "Simulation time step dt must same between drone and manager."
         self.drones.append(drone)
 
-    def step(self, actions: List[List[float]]):
+    def step(self, actions: Union[List[List[float]], np.ndarray]):
         assert len(actions) == len(self.drones)
         ix = self.ix
         states = [drone(act) for drone, act in zip(self.drones, actions)]
@@ -59,6 +59,7 @@ class DroneManager:
 
     def create_drones(
             self,
+            roll: DroneRoll,
             init_state: Union[List, np.ndarray] = None,
             x: float = None, y: float = None,
             u: float = None, v: float = None,
@@ -78,7 +79,7 @@ class DroneManager:
 
         id_ = str(id_) if id_ is not None else f"drone-{len(self.drones)}"
 
-        drone = Drone2D(dt=self.dt, id_=id_)
+        drone = Drone2D(roll, dt=self.dt, id_=id_)
         drone.reset(state)
         self.add(drone)
         return drone
@@ -86,9 +87,9 @@ class DroneManager:
 
     @property
     def states(self):
-        return [
+        return np.array([
             drone.state.copy() for drone in self.drones
-        ]
+        ])
 
     @property
     def num_drone(self):
