@@ -7,7 +7,7 @@ import numpy.linalg as nl
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from lib.env.single import DroneSoccerSingleEnvV0, DroneSoccerSingleEnvV1
+from lib.env.single import DroneSoccerSingleEnvV0, DroneSoccerSingleEnvV1, DroneSoccerSingleEnvV2
 
 
 def run_v0():
@@ -41,5 +41,20 @@ def run_v1():
     print(reward)
 
 
+def run_v2():
+    env = DroneSoccerSingleEnvV2()
+    env.reset()
+
+    done = False
+    while not done:
+        states = env.states
+        striker_pos = states[0, :2]
+        error_to_goal = env.GOAL_POS - striker_pos
+        action = error_to_goal / nl.norm(error_to_goal) * 10
+        obs, reward, done, _ = env.step(action)
+        env.render()
+    print(reward)
+
+
 if __name__ == '__main__':
-    run_v1()
+    run_v2()
