@@ -102,10 +102,11 @@ class DroneSoccerSingleEnvV1(gym.Env):
     dt = 0.01  # sec | simulation time step
     due = 10.  # sec | max episode time
     MAX_EPISODE_STEP = due // dt
+    WORLD_SIZE = np.array([10, 10])
 
-    INIT_POS_RANGE_X = np.array([5, 7])
+    INIT_POS_RANGE_X = np.array([5, 6])
     INIT_POS_RANGE_Y = np.array([2, 8])
-    INIT_DEFENSE_RANGE_X = np.array([7, 9])
+    INIT_DEFENSE_RANGE_X = np.array([7, 8])
     INIT_DEFENSE_RANGE_Y = np.array([3, 7])
 
     INIT_STRIKER_POS_MIN = np.array([INIT_POS_RANGE_X[0], INIT_POS_RANGE_Y[0]])
@@ -183,7 +184,7 @@ class DroneSoccerSingleEnvV1(gym.Env):
         cv2.rectangle(img, tuple(f(self.GOAL_POS - corner_shift)), tuple(f(self.GOAL_POS + corner_shift)), self.COLOR_GOAL, thickness=3)
         # draw info
         cv2.putText(img, f"time: {self.time: >5} sec", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), thickness=2)
-        if mode == "human":
+        if mode == "human" or mode == "debug-show":
             cv2.imshow("DroneSoccer", img)
             if self.before_time is None:
                 wait_time = self.dt
@@ -191,6 +192,8 @@ class DroneSoccerSingleEnvV1(gym.Env):
                 current_time = time.time()
                 delta_time = current_time - self.before_time
                 wait_time = self.dt - delta_time
+            if mode == "debug-show":
+                wait_time = -1
             cv2.waitKey(int(wait_time * 1000))
             self.before_time = time.time()
             return
@@ -306,7 +309,7 @@ class DroneSoccerSingleEnvV2(DroneSoccerSingleEnvV1):
         cv2.rectangle(img, tuple(f(self.GOAL_POS - corner_shift)), tuple(f(self.GOAL_POS + corner_shift)), self.COLOR_GOAL, thickness=3)
         # draw info
         cv2.putText(img, f"time: {self.time: >5} sec", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), thickness=2)
-        if mode == "human":
+        if mode == "human" or mode == "debug-show":
             cv2.imshow("DroneSoccer", img)
             if self.before_time is None:
                 wait_time = self.dt
@@ -314,6 +317,8 @@ class DroneSoccerSingleEnvV2(DroneSoccerSingleEnvV1):
                 current_time = time.time()
                 delta_time = current_time - self.before_time
                 wait_time = self.dt - delta_time
+            if mode == "debug-show":
+                wait_time = -1
             cv2.waitKey(int(wait_time * 1000))
             self.before_time = time.time()
             return
