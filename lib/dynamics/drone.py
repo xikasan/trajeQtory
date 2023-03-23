@@ -4,6 +4,13 @@ import xsim
 import numpy as np
 import numpy.linalg as nl
 from typing import List, Union
+from enum import Enum, auto
+
+
+class DroneRoll(Enum):
+    attacker = auto()
+    striker = auto()
+    defense = auto()
 
 
 class IndexDrone2D:
@@ -40,10 +47,11 @@ class Drone2D:
     R = 0.15  # [m] radius
     m = 0.40  # [kg] mass
 
-    def __init__(self, dt: float = 0.01, dtype: np.dtype = np.float32, id_: int = 0):
+    def __init__(self, roll: DroneRoll, dt: float = 0.01, dtype: np.dtype = np.float32, id_: int = 0):
         self.dtype = dtype
         self.dt: float = dt
         self.id_: int = id_
+        self.roll: DroneRoll = roll
 
         self.x: np.ndarray = np.zeros(4)
         self.A_, self.B_ = self.__build()
@@ -66,6 +74,9 @@ class Drone2D:
             [0, 1]
         ])
         return A.T, B.T
+
+    def __str__(self):
+        return f"Drone2D: id={self.id_} roll={self.roll.name} pos={self.position} vel={self.velocity}"
 
     def __call__(self, u: Union[List, np.ndarray]) -> np.ndarray:
         u = np.asarray(u).astype(float)
@@ -105,3 +116,7 @@ class Drone2D:
     @property
     def position(self) -> np.ndarray:
         return self.x[self.ix.pos].astype(self.dtype)
+
+    @property
+    def velocity(self) -> np.ndarray:
+        return self.x[self.ix.vel].astype(self.dtype)

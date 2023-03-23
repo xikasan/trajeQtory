@@ -163,7 +163,7 @@ from typing import List, Union
 #         return len(self.drones)
 
 
-from lib.dynamics.drone import Drone2D, IndexDrone2D
+from lib.dynamics.drone import Drone2D, IndexDrone2D, DroneRoll
 from lib.dynamics.manager import DroneManager
 
 
@@ -279,5 +279,10 @@ def run():
     plt.show()
 
 
+def run4():
+    roll = DroneRoll.striker
+    print(roll is DroneRoll.striker)
+
+
 if __name__ == '__main__':
-    run3()
+    run4()
