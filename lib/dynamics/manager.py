@@ -57,6 +57,13 @@ class DroneManager:
                 drone1.x[ix.vel] = vel1_
                 drone2.x[ix.vel] = vel2_
 
+                overwrap = drone1.R + drone2.R - d2
+                shift = overwrap / 2
+                shift1 = - shift * nn
+                shift2 = shift * nn
+                drone1.x[ix.pos] += shift1
+                drone2.x[ix.pos] += shift2
+
     def create_drones(
             self,
             roll: DroneRoll,

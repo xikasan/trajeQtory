@@ -15,11 +15,33 @@ from ..controller.defense import DefenseControllerV0, DefenseControllerV1
 class DroneSoccerSingleEnvV0(gym.Env):
 
     dt = 0.01  # sec | simulation time step
-    due = 30  # sec | max episode time
-    goal_pos = np.array([9, 5])  # m
-    goal_size = 1  # m | in diameter
-    window_size = 600  # px | window height and width
-    max_step_count = due // dt
+    due = 10.  # sec | max episode time
+    MAX_EPISODE_STEP = due // dt
+    WORLD_SIZE = np.array([10, 10])
+
+    INIT_POS_RANGE_X = np.array([5, 6])
+    INIT_POS_RANGE_Y = np.array([2, 8])
+    INIT_DEFENSE_RANGE_X = np.array([7, 8])
+    INIT_DEFENSE_RANGE_Y = np.array([3, 7])
+
+    INIT_STRIKER_POS_MIN = np.array([INIT_POS_RANGE_X[0], INIT_POS_RANGE_Y[0]])
+    INIT_STRIKER_POS_MAX = np.array([INIT_POS_RANGE_X[1], INIT_POS_RANGE_Y[1]])
+    INIT_DEFENSE_POS_MIN = np.array([INIT_DEFENSE_RANGE_X[0], INIT_DEFENSE_RANGE_Y[0]])
+    INIT_DEFENSE_POS_MAX = np.array([INIT_DEFENSE_RANGE_X[1], INIT_DEFENSE_RANGE_Y[1]])
+
+    GOAL_R = 1  # m | diameter
+    GOAL_THICKNESS = 0.1  # m
+    GOAL_POS = np.array([9, 5])
+
+    WINDOW_SIZE = np.array([600, 600])  # [px, px]
+
+    COLOR_BLUE = (255, 0, 0)
+    COLOR_GREEN = (0, 255, 0)
+    COLOR_RED = (0, 0, 255)
+
+    COLOR_STRIKER = COLOR_GREEN
+    COLOR_DEFENSE = COLOR_RED
+    COLOR_GOAL = COLOR_BLUE
 
     def __init__(self):
         self.drone = Drone2D(DroneRoll.striker, dt=self.dt, id_="ball")
@@ -86,7 +108,11 @@ class DroneSoccerSingleEnvV0(gym.Env):
 
     @property
     def state(self):
-        return self.drone.state.copy()
+        return self.drone.state.copy().reshape((1, -1))
+
+    @property
+    def states(self):
+        return self.state
 
     @property
     def observation(self):
@@ -100,14 +126,14 @@ class DroneSoccerSingleEnvV0(gym.Env):
 class DroneSoccerSingleEnvV1(gym.Env):
 
     dt = 0.01  # sec | simulation time step
-    due = 10.  # sec | max episode time
+    due = 5.  # sec | max episode time
     MAX_EPISODE_STEP = due // dt
     WORLD_SIZE = np.array([10, 10])
 
-    INIT_POS_RANGE_X = np.array([5, 6])
+    INIT_POS_RANGE_X = np.array([2, 3])
     INIT_POS_RANGE_Y = np.array([2, 8])
     INIT_DEFENSE_RANGE_X = np.array([7, 8])
-    INIT_DEFENSE_RANGE_Y = np.array([3, 7])
+    INIT_DEFENSE_RANGE_Y = np.array([2, 8])
 
     INIT_STRIKER_POS_MIN = np.array([INIT_POS_RANGE_X[0], INIT_POS_RANGE_Y[0]])
     INIT_STRIKER_POS_MAX = np.array([INIT_POS_RANGE_X[1], INIT_POS_RANGE_Y[1]])
@@ -163,12 +189,18 @@ class DroneSoccerSingleEnvV1(gym.Env):
 
         return self.observation, reward, done, {}
 
-    def reset(self):
-        pos = self.generate_random_position(self.INIT_STRIKER_POS_MIN, self.INIT_STRIKER_POS_MAX)
-        self.manager.create_drones(DroneRoll.striker, **pos)
-        pos = self.generate_random_position(self.INIT_DEFENSE_POS_MIN, self.INIT_DEFENSE_POS_MAX)
-        self.manager.create_drones(DroneRoll.defense, **pos)
+    def reset(self, init_state: dict = None):
+        self.manager = DroneManager()
         self.render_factor = self.WINDOW_SIZE / self.manager.world_max
+        if init_state is None:
+            pos = self.generate_random_position(self.INIT_STRIKER_POS_MIN, self.INIT_STRIKER_POS_MAX)
+            self.manager.create_drones(DroneRoll.striker, **pos)
+            pos = self.generate_random_position(self.INIT_DEFENSE_POS_MIN, self.INIT_DEFENSE_POS_MAX)
+            self.manager.create_drones(DroneRoll.defense, **pos)
+            return self.states
+        for roll, positions in init_state.items():
+            for position in positions:
+                self.manager.create_drones(roll, x=position[0], y=position[1])
         return self.states
 
     def render(self, mode="human"):
@@ -250,6 +282,8 @@ class DroneSoccerSingleEnvV2(DroneSoccerSingleEnvV1):
     ):
         super().__init__()
         self.manager = DroneManager()
+        self.defense_controller1_class = defense_controller1
+        self.defense_controller2_class = defense_controller2
         self.defense_controller1: BaseController = defense_controller1(self.manager, target=0)
         self.defense_controller2: BaseController = defense_controller2(self.manager, target=1)
         self.step_count = 0
@@ -263,6 +297,7 @@ class DroneSoccerSingleEnvV2(DroneSoccerSingleEnvV1):
         act = np.asarray(action)
         assert act.shape == (2,), f"action shape is expected (2,), but {act.shape} is given."
         action = np.vstack([action, self.defense_controller1(), self.defense_controller2()])
+        # action = np.vstack([action, np.zeros_like(action), np.zeros_like(action)])
         self.manager.step(action)
 
         # over check
@@ -283,15 +318,28 @@ class DroneSoccerSingleEnvV2(DroneSoccerSingleEnvV1):
 
         return self.observation, reward, done, {}
 
-    def reset(self):
-        pos = self.generate_random_position(self.INIT_STRIKER_POS_MIN, self.INIT_STRIKER_POS_MAX)
-        self.manager.create_drones(DroneRoll.striker, **pos)
-        pos = self.generate_random_position(self.INIT_DEFENSE_POS_MIN, self.INIT_DEFENSE_POS_MAX)
-        self.manager.create_drones(DroneRoll.defense, **pos)
-        pos = self.generate_random_position(self.INIT_DEFENSE_POS_MIN, self.INIT_DEFENSE_POS_MAX)
-        self.manager.create_drones(DroneRoll.defense, **pos)
+    def reset(self, init_state: dict = None):
+        self.manager = DroneManager()
         self.render_factor = self.WINDOW_SIZE / self.manager.world_max
-        return self.states
+
+        self.defense_controller1 = self.defense_controller1_class(self.manager, target=1)
+        self.defense_controller2 = self.defense_controller2_class(self.manager, target=1)
+
+        # initial condition is not given = Random start
+        if init_state is None:
+            pos = self.generate_random_position(self.INIT_STRIKER_POS_MIN, self.INIT_STRIKER_POS_MAX)
+            self.manager.create_drones(DroneRoll.striker, **pos)
+            pos = self.generate_random_position(self.INIT_DEFENSE_POS_MIN, self.INIT_DEFENSE_POS_MAX)
+            self.manager.create_drones(DroneRoll.defense, **pos)
+            pos = self.generate_random_position(self.INIT_DEFENSE_POS_MIN, self.INIT_DEFENSE_POS_MAX)
+            self.manager.create_drones(DroneRoll.defense, **pos)
+            return self.observation
+
+        # initial condition is given
+        for roll, positions in init_state.items():
+            for position in positions:
+                self.manager.create_drones(roll, x=position[0], y=position[1])
+        return self.observation
 
     def render(self, mode="human"):
         img = np.ones((*self.WINDOW_SIZE, 3))
@@ -309,7 +357,7 @@ class DroneSoccerSingleEnvV2(DroneSoccerSingleEnvV1):
         cv2.rectangle(img, tuple(f(self.GOAL_POS - corner_shift)), tuple(f(self.GOAL_POS + corner_shift)), self.COLOR_GOAL, thickness=3)
         # draw info
         cv2.putText(img, f"time: {self.time: >5} sec", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), thickness=2)
-        if mode == "human" or mode == "debug-show":
+        if mode == "human" or mode == "debug":
             cv2.imshow("DroneSoccer", img)
             if self.before_time is None:
                 wait_time = self.dt
@@ -317,7 +365,7 @@ class DroneSoccerSingleEnvV2(DroneSoccerSingleEnvV1):
                 current_time = time.time()
                 delta_time = current_time - self.before_time
                 wait_time = self.dt - delta_time
-            if mode == "debug-show":
+            if mode == "debug":
                 wait_time = -1
             cv2.waitKey(int(wait_time * 1000))
             self.before_time = time.time()
